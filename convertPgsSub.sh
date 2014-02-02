@@ -1,5 +1,27 @@
 #!/bin/bash
 
+/*
+ *  convertPgsSub.sh
+ *
+ *  Copyright (C) 2014  Staf Wagemakers Belgie/Belgium
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ */
+
+
 BDSup2SubJar="/home/staf/scripts/jar/BDSup2Sub.jar"
 
 ScriptName="`basename $0`"
@@ -75,18 +97,11 @@ if [ $? != "0" ]; then
 
 fi
 
-# videoTracks=`cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" |  sed -e 's/.*ID \(.*:\) \(.*\) (\(.*\))$/\1\2/' | sed -e 's/^\(.*\.\).*\(...\)$/\1\2/' | tr "\n" " "`
-
-# videoTracks=`cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" |  sed -e 's/.*ID \(.*:\) \(.*\) (\(.*\))$/\1\2\.\3/' | sed -e 's/^\(.*\.\).*\(...\)$/\1\2/' | tr "A-Z" "a-z" | tr  "\n" " "`
-# videoTracks=`cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" |  sed -e 's/.*ID \(.*:\) \(.*\) (\(.*\))$/\1\2\.\3/' | sed -e 's/^\(.*\.\).*\(...\)$/\1\2/' | tr "A-Z" "a-z" | sed -e 's/^\(.*\)\:\(.*\)\.\(.*\)$/\1\:\2\.\1_\3/' | tr "\n" " "`
 videoTracks=`cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" |  sed -e 's/.*ID \(.*:\) \(.*\) (\(.*\)).*language:\(...\) .*$/\1\2\.\4.\3/' | sed -e 's/^\(.*\.\).*\(...\)$/\1\2/' | tr "A-Z" "a-z" | sed -e 's/^\(.*\)\:\(.*\)\.\(.*\)$/\1\:\2\.\1_\3/' | tr "\n" " "`
 
 echo "Executing mkvextract tracks $inputFile $videoTracks"
 
 echo "DEBUG: videoTracks: \"$videoTracks\""
-
-# langTracks=`echo $videoTracks | tr " " "\n" | sed -e 's/^\(.*:\).*\.\(.*\)\..*$/--language \1\2/' | tr "\n" " "`
-# langTracks=`echo $videoTracks | tr " " "\n" | sed '/^$/d' | sed -e 's/^\(.*:\)\(.*\)\.\(.*\)\.\(.*\)/--language 0:\3 \2.\3.\4/' | tr "\n" " "`
 
 echo "DEBUG: langTracks: \"$langTracks\""
 
@@ -134,17 +149,6 @@ for track in $videoTracks; do
 	mergeTracks="$mergeTracks $trackFile"
 
 done 
-
-# echo "Running mkvmerge -o $outputFile $mergeTracks"
-# 
-# mkvmerge -o $outputFile $mergeTracks
-# 
-# if [ $? != "0" ]; then
-# 
-	# echo "Sorry, mkvmerge failed"
-	# exit 1
-# 
-# fi
 
 langTracks=`echo $mergeTracks | tr " " "\n" | sed '/^$/d' | sed -e 's/^\(\([^.]*\)\.\([^.]*\)\..*\)$/--language 0:\3 \1/' | tr "\n" " "`
 echo "DEBUG: langTracks=\"$langTracks\""
