@@ -1,7 +1,12 @@
 #!/bin/bash
 
+BDSup2SubJar="/home/staf/scripts/jar/BDSup2Sub.jar"
+
 ScriptName="`basename $0`"
-TmpDir=/"home/staf/tmp/`basename $ScriptName`"
+TmpDir="/home/staf/tmp/`basename $ScriptName`"
+
+
+echo "DEBUG: tmpDir= $TmpDir"
 
 usage() {
 
@@ -26,9 +31,11 @@ if [ ! -r "$inputFile" ]; then
 
 fi
 
-VideoTmpDir="$TmpDir/$inputFile"
+VideoTmpDir="$TmpDir/`basename $inputFile`/"
 
 if [ ! -d "$VideoTmpDir" ]; then
+
+	echo "Creating:  $VideoTmpDir"
 
 	mkdir -p $VideoTmpDir
 
@@ -43,20 +50,22 @@ fi
 
 IndexFile="$VideoTmpDir/index"
 
-echo "Createing indexFile: $IndexFile"
+rm $IndexFile > /dev/null
 
-mkvmerge -i $inputFile > $IndexFile
+echo "Creating indexFile: $IndexFile: running  mkvmerge -I $inputFile > $IndexFile"
+echo $IndexFile
 
-if [ $? != "0" ]; then
+mkvmerge -I  $inputFile > $IndexFile
 
-	echo "Sorry, mkvmerge -i $inputFile failed"
+if [ $? -ne  0 ]; then
+
+	echo "Sorry, mkvmerge -I $inputFile failed"
 	exit 1
 
 fi
 
 
-
-cat $IndexFile | grep "PGS"
+cat $IndexFile | grep "PGS" > /dev/null
 
 if [ $? != "0" ]; then
 
@@ -68,13 +77,29 @@ fi
 
 # videoTracks=`cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" |  sed -e 's/.*ID \(.*:\) \(.*\) (\(.*\))$/\1\2/' | sed -e 's/^\(.*\.\).*\(...\)$/\1\2/' | tr "\n" " "`
 
-videoTracks=`cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" |  sed -e 's/.*ID \(.*:\) \(.*\) (\(.*\))$/\1\2\.\3/' | sed -e 's/^\(.*\.\).*\(...\)$/\1\2/' | tr "A-Z" "a-z" | tr  "\n" " "`
+# videoTracks=`cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" |  sed -e 's/.*ID \(.*:\) \(.*\) (\(.*\))$/\1\2\.\3/' | sed -e 's/^\(.*\.\).*\(...\)$/\1\2/' | tr "A-Z" "a-z" | tr  "\n" " "`
+# videoTracks=`cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" |  sed -e 's/.*ID \(.*:\) \(.*\) (\(.*\))$/\1\2\.\3/' | sed -e 's/^\(.*\.\).*\(...\)$/\1\2/' | tr "A-Z" "a-z" | sed -e 's/^\(.*\)\:\(.*\)\.\(.*\)$/\1\:\2\.\1_\3/' | tr "\n" " "`
+videoTracks=`cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" |  sed -e 's/.*ID \(.*:\) \(.*\) (\(.*\)).*language:\(...\) .*$/\1\2\.\4.\3/' | sed -e 's/^\(.*\.\).*\(...\)$/\1\2/' | tr "A-Z" "a-z" | sed -e 's/^\(.*\)\:\(.*\)\.\(.*\)$/\1\:\2\.\1_\3/' | tr "\n" " "`
 
 echo "Executing mkvextract tracks $inputFile $videoTracks"
 
-exit 2
+echo "DEBUG: videoTracks: \"$videoTracks\""
 
-# mkvextract tracks $inputFile $videoTracks
+# langTracks=`echo $videoTracks | tr " " "\n" | sed -e 's/^\(.*:\).*\.\(.*\)\..*$/--language \1\2/' | tr "\n" " "`
+# langTracks=`echo $videoTracks | tr " " "\n" | sed '/^$/d' | sed -e 's/^\(.*:\)\(.*\)\.\(.*\)\.\(.*\)/--language 0:\3 \2.\3.\4/' | tr "\n" " "`
+
+echo "DEBUG: langTracks: \"$langTracks\""
+
+mkvextract tracks $inputFile $videoTracks
+
+if [ $? != "0" ]; then
+
+	echo "Sorry, mkvextract tracks $inputFile $videoTracks failed"
+	exit 1
+
+
+fi
+
 
 mergeTracks=""
 
@@ -84,15 +109,14 @@ for track in $videoTracks; do
 
 	trackFile=`echo $track | cut -f2 -d ':'`
 
-	echo $track | grep -E "\.pgs$"
+	echo $track | grep -E "pgs$"
 
 	if [ $? = "0" ]; then
 
 		outBasename=`echo $trackFile | cut -f 1 -d '.'`
 		outSub="${outBasename}.sub"
-		trackFile="${outBasename}.idx"
 
-		java -jar BDSup2Sub.jar subtitles.pgs -o subtitles.sub
+		java -jar $BDSup2SubJar  $trackFile -o $trackFile.sub
 
 		if [ $? != "0" ]; then
 
@@ -102,6 +126,8 @@ for track in $videoTracks; do
 
 		fi
 
+		trackFile="${trackFile}.idx"
+
 
 	fi
 
@@ -109,12 +135,29 @@ for track in $videoTracks; do
 
 done 
 
-mkvmerge -o $outputFile $mergeTracks
+# echo "Running mkvmerge -o $outputFile $mergeTracks"
+# 
+# mkvmerge -o $outputFile $mergeTracks
+# 
+# if [ $? != "0" ]; then
+# 
+	# echo "Sorry, mkvmerge failed"
+	# exit 1
+# 
+# fi
+
+langTracks=`echo $mergeTracks | tr " " "\n" | sed '/^$/d' | sed -e 's/^\(\([^.]*\)\.\([^.]*\)\..*\)$/--language 0:\3 \1/' | tr "\n" " "`
+echo "DEBUG: langTracks=\"$langTracks\""
+echo "DEBUG: mergeTracks=\"$mergeTracks\""
+echo "DEBUG: videoTracks=\"$videoTracks\""
+
+mkvmerge -o ${outputFile} $langTracks
 
 if [ $? != "0" ]; then
 
-	echo "Sorry, mkvmerge failed"
+	echo "Sorry, mkvmerge failed \"mkvmerge -o ${outputFile}_lang $langTracks\""
 	exit 1
 
-
 fi
+
+echo "DEBUG \"mkvmerge -o ${outputFile}_lang $langTracks\" executed"
