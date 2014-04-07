@@ -1,25 +1,24 @@
 #!/bin/bash
 
-/*
- *  convertPgsSub.sh
- *
- *  Copyright (C) 2014  Staf Wagemakers Belgie/Belgium
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- *
- */
+#
+#  convertPgsSub.sh
+#
+#  Copyright (C) 2014  Staf Wagemakers Belgie/Belgium
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+# 
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write to the Free Software Foundation, Inc.,
+#  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+# 
 
 
 BDSup2SubJar="/home/staf/scripts/jar/BDSup2Sub.jar"
@@ -46,6 +45,16 @@ fi
 inputFile=$1
 outputFile=$2
 
+outputDir=`dirname $outputFile`
+outputDir=`pwd`/$ouputDir
+outputBaseFileName=`basename $outputFile`
+
+outputFile="${outputDir}/${outputBaseFileName}"
+
+
+echo "DEBUG: outputDir=\"$outputDir\""
+echo "DEBUG: outputFile=\"$outputFile\""
+
 if [ ! -r "$inputFile" ]; then
 
 	echo "Sorry, failed to read $inputFile"
@@ -67,6 +76,16 @@ if [ ! -d "$VideoTmpDir" ]; then
 		exit 1
 
 	fi
+
+fi
+
+cd $VideoTmpDir
+
+if [ $? != "0" ]; then
+
+	echo "Sorry, cd $VideoTmpDir failed"
+
+	exit 1
 
 fi
 
