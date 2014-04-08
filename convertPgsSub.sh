@@ -21,58 +21,198 @@
 # 
 
 
+#
+# basic settings
+#
+
+
 BDSup2SubJar="/home/staf/scripts/jar/BDSup2Sub.jar"
 
 ScriptName="`basename $0`"
-TmpDir="/home/staf/tmp/`basename $ScriptName`"
+TmpDir="/home/staf/tmp"
 
 
-echo "DEBUG: tmpDir= $TmpDir"
+#
+# Usage
+#
 
 usage() {
 
-	echo "Usage: $ScriptName inputFile.mkv outputFile"
+	echo "Usage: $ScriptName -i inputFile.mkv -o outputFile.mkv [OPTION]" >&2
+	echo >&2
+	echo "Options:">&2
+	echo >&2
+	echo " -i	inputFile" >&2
+	echo " -o	outputFile" >&2
+	echo " -v	enable verbosity" >&2
+	echo " -d	delete temporary files" >&2
+	echo >&2
 	exit 1
 
 }
 
-if [ "$#" != "2" ]; then
+
+#
+# Get the options
+#
+
+outputFile=""
+inputFile=""
+Verbose=""
+DeleteIt=0
+
+while getopts ":o:i:vdh" opt; do
+
+  	case $opt in
+
+    	o)
+		outputFile="$OPTARG"
+		;;
+    	i)
+		inputFile="$OPTARG"
+		;;
+
+	v)
+		Verbose=1
+		;;
+
+	d)
+		DeleteIt=1
+		;;
+
+    	h)
+      		usage
+      		;;
+
+    	\?)
+      		usage
+      		;;
+
+  esac
+
+
+done
+
+if [ "$Verbose" ]; then
+
+
+echo "DEBUG: tmpDir= $TmpDir" >&2
+
+fi
+
+if [ ! -d $TmpDir ]; then
+
+	echo "Sorry TmpDir: $TmpDir is not a directory" >&2
+	exit 1
+
+fi
+
+TmpDir="/home/staf/tmp/`basename $ScriptName`"
+
+if [ ! -d $TmpDir ]; then
+
+	echo >&2
+	echo "Creating $TmpDir:" >&2
+	echo >&2
+
+
+	mkdir $TmpDir
+
+	if [ $? != "0" ]; then
+
+		echo >&2
+		echo "Sorry, failed to create $TmpDir" >&2
+		echo >&2
+
+
+	fi 
+
+
+fi
+
+if [ "$Verbose" ]; then
+
+
+echo >&2
+echo "outputFile=\"$outputFile\"" >&2
+echo "inputFile=\"$inputFile\"" >&2
+echo "verbose=\"$Verbose\"" >&2
+echo "DeleteIt=\"$DeleteIt\"" >&2
+echo >&2
+
+fi
+
+#
+# outputFile and inputFile required
+#
+
+if [ -z "$inputFile" ] || [ -z "$outputFile" ]; then   
+
+	echo >&2
+	echo "inputFile and outputFile are required" >&2
+	echo >&2
 
 	usage
 
 fi
 
-inputFile=$1
-outputFile=$2
+#
+# set the ouputFile to the fullpathname
+#
+
 
 outputDir=`dirname $outputFile`
-outputDir=`pwd`/$ouputDir
-outputBaseFileName=`basename $outputFile`
 
+if [ "$outputDir" = "." ]; then
+
+	 outputDir=`pwd`/$ouputDir
+
+fi 
+
+outputBaseFileName=`basename $outputFile`
 outputFile="${outputDir}/${outputBaseFileName}"
 
+if [ "Verbose" ]; then
 
-echo "DEBUG: outputDir=\"$outputDir\""
-echo "DEBUG: outputFile=\"$outputFile\""
+echo >&2
+echo "DEBUG: outputDir=\"$outputDir\"" >&2
+echo "DEBUG: outputFile=\"$outputFile\"" >&2
+echo >&2
+
+fi
+
+#
+# no input, dont exec
+#
 
 if [ ! -r "$inputFile" ]; then
 
-	echo "Sorry, failed to read $inputFile"
+	echo >&2
+	echo "Sorry, failed to read $inputFile" >&2
+	echo >&2
 	exit 1
 
 fi
+
+#
+# Create the VideoTmpDir or die
+#
 
 VideoTmpDir="$TmpDir/`basename $inputFile`/"
 
 if [ ! -d "$VideoTmpDir" ]; then
 
-	echo "Creating:  $VideoTmpDir"
+	echo >&2
+	echo "Creating:  $VideoTmpDir" >&2
+	echo >&2
 
 	mkdir -p $VideoTmpDir
 
 	if [ $? != "0" ]; then
 
-		echo "Sorry, failed to create $VideoTmpDir"
+		echo >&2
+		echo "Sorry, failed to create $VideoTmpDir" >&2
+		echo >&2
 		exit 1
 
 	fi
@@ -83,34 +223,58 @@ cd $VideoTmpDir
 
 if [ $? != "0" ]; then
 
-	echo "Sorry, cd $VideoTmpDir failed"
+	echo >&2
+	echo "Sorry, cd $VideoTmpDir failed" >&2
+	echo >&2
 
 	exit 1
 
 fi
+
+#
+# Create the video index file or die
+#
 
 IndexFile="$VideoTmpDir/index"
 
-rm $IndexFile > /dev/null
+> $IndexFile > /dev/null
 
-echo "Creating indexFile: $IndexFile: running  mkvmerge -I $inputFile > $IndexFile"
-echo $IndexFile
+if [ $? != "0" ]; then
 
-mkvmerge -I  $inputFile > $IndexFile
+	echo >&2
+	echo "Sorry failed to create the IndexFile: $IndexFile" >&2
+	echo >&2
 
-if [ $? -ne  0 ]; then
-
-	echo "Sorry, mkvmerge -I $inputFile failed"
 	exit 1
 
 fi
 
+echo >&2
+echo "Creating indexFile: $IndexFile: running  mkvmerge -I $inputFile > $IndexFile" >&2
+echo $IndexFile >&2
+
+mkvmerge -I  $inputFile > $IndexFile
+
+if [ $? != "0" ]; then
+
+	echo >&2
+	echo "Sorry, mkvmerge -I $inputFile failed" >&2
+	echo >&2
+	exit 1
+
+fi
+
+#
+# check if there are pgs subtitles
+#
 
 cat $IndexFile | grep "PGS" > /dev/null
 
 if [ $? != "0" ]; then
 
-	echo "No, PGS subtitles found"
+	echo >&2
+	echo "No, PGS subtitles found" >&2
+	echo >&2
 	exit 1
 
 
@@ -118,28 +282,36 @@ fi
 
 videoTracks=`cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" |  sed -e 's/.*ID \(.*:\) \(.*\) (\(.*\)).*language:\(...\) .*$/\1\2\.\4.\3/' | sed -e 's/^\(.*\.\).*\(...\)$/\1\2/' | tr "A-Z" "a-z" | sed -e 's/^\(.*\)\:\(.*\)\.\(.*\)$/\1\:\2\.\1_\3/' | tr "\n" " "`
 
-echo "Executing mkvextract tracks $inputFile $videoTracks"
+echo "Executing mkvextract tracks $inputFile $videoTracks" >&2
 
-echo "DEBUG: videoTracks: \"$videoTracks\""
+if [ "Verbose" ]; then
 
-echo "DEBUG: langTracks: \"$langTracks\""
+	echo >&2
+	echo "DEBUG: videoTracks: \"$videoTracks\"" >&2
+	echo "DEBUG: langTracks: \"$langTracks\"" >&2
+	echo >&2
+
+fi
 
 mkvextract tracks $inputFile $videoTracks
 
 if [ $? != "0" ]; then
 
-	echo "Sorry, mkvextract tracks $inputFile $videoTracks failed"
+	echo >&2
+	echo "Sorry, mkvextract tracks $inputFile $videoTracks failed" >&2
+	echo >&2
 	exit 1
 
 
 fi
 
-
 mergeTracks=""
 
 for track in $videoTracks; do
 
-	echo "t: $track"
+	echo >&2
+	echo "t: $track" >&2
+	echo >&2
 
 	trackFile=`echo $track | cut -f2 -d ':'`
 
@@ -154,7 +326,10 @@ for track in $videoTracks; do
 
 		if [ $? != "0" ]; then
 
-			echo "Sorry, subtitle convertion failed"
+			echo >&2
+			echo "Sorry, subtitle convertion failed" >&2
+			echo >&2
+
 			exit 1
 
 
@@ -170,17 +345,33 @@ for track in $videoTracks; do
 done 
 
 langTracks=`echo $mergeTracks | tr " " "\n" | sed '/^$/d' | sed -e 's/^\(\([^.]*\)\.\([^.]*\)\..*\)$/--language 0:\3 \1/' | tr "\n" " "`
-echo "DEBUG: langTracks=\"$langTracks\""
-echo "DEBUG: mergeTracks=\"$mergeTracks\""
-echo "DEBUG: videoTracks=\"$videoTracks\""
+
+if [ "$Verbose" ]; then
+
+	echo >&2
+	echo "DEBUG: langTracks=\"$langTracks\"" >&2
+	echo "DEBUG: mergeTracks=\"$mergeTracks\"" >&2
+	echo "DEBUG: videoTracks=\"$videoTracks\"" >&2
+	echo >&2
+
+fi
 
 mkvmerge -o ${outputFile} $langTracks
 
 if [ $? != "0" ]; then
 
-	echo "Sorry, mkvmerge failed \"mkvmerge -o ${outputFile}_lang $langTracks\""
+	echo >&2
+	echo "Sorry, mkvmerge failed \"mkvmerge -o ${outputFile}_lang $langTracks\"" >&2
+	echo >&2
+
 	exit 1
 
 fi
 
-echo "DEBUG \"mkvmerge -o ${outputFile}_lang $langTracks\" executed"
+if [ "$Verbose" ]; then
+
+	echo >&2
+	echo "DEBUG \"mkvmerge -o ${outputFile}_lang $langTracks\" executed"
+	echo >&2
+
+fi
