@@ -59,7 +59,7 @@ usage() {
 outputFile=""
 inputFile=""
 Verbose=""
-DeleteIt=0
+DeleteIt=""
 
 while getopts ":o:i:vdh" opt; do
 
@@ -92,6 +92,10 @@ while getopts ":o:i:vdh" opt; do
 
 
 done
+
+#
+# set TmpDir
+#
 
 if [ "$Verbose" ]; then
 
@@ -129,6 +133,10 @@ if [ ! -d $TmpDir ]; then
 
 
 fi
+
+#
+# settings
+#
 
 if [ "$Verbose" ]; then
 
@@ -280,7 +288,15 @@ if [ $? != "0" ]; then
 
 fi
 
+#
+# Get the videoTracks from the index
+#
+
 videoTracks=`cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" |  sed -e 's/.*ID \(.*:\) \(.*\) (\(.*\)).*language:\(...\) .*$/\1\2\.\4.\3/' | sed -e 's/^\(.*\.\).*\(...\)$/\1\2/' | tr "A-Z" "a-z" | sed -e 's/^\(.*\)\:\(.*\)\.\(.*\)$/\1\:\2\.\1_\3/' | tr "\n" " "`
+
+#
+# extractIt
+#
 
 echo "Executing mkvextract tracks $inputFile $videoTracks" >&2
 
@@ -306,6 +322,11 @@ if [ $? != "0" ]; then
 fi
 
 mergeTracks=""
+extraSubFiles=""
+
+#
+# convert the pgs subtitles
+#
 
 for track in $videoTracks; do
 
@@ -335,6 +356,8 @@ for track in $videoTracks; do
 
 		fi
 
+		extraSubFiles="${extraSubFiles} ${trackFile}.sub ${trackFile}.idx"
+
 		trackFile="${trackFile}.idx"
 
 
@@ -343,6 +366,10 @@ for track in $videoTracks; do
 	mergeTracks="$mergeTracks $trackFile"
 
 done 
+
+#
+# set the lang for each track
+#
 
 langTracks=`echo $mergeTracks | tr " " "\n" | sed '/^$/d' | sed -e 's/^\(\([^.]*\)\.\([^.]*\)\..*\)$/--language 0:\3 \1/' | tr "\n" " "`
 
@@ -355,6 +382,10 @@ if [ "$Verbose" ]; then
 	echo >&2
 
 fi
+
+#
+# merge them
+#
 
 mkvmerge -o ${outputFile} $langTracks
 
@@ -373,5 +404,66 @@ if [ "$Verbose" ]; then
 	echo >&2
 	echo "DEBUG \"mkvmerge -o ${outputFile}_lang $langTracks\" executed"
 	echo >&2
+
+fi
+
+#
+# delete the temporary files
+#
+
+if [ "$DeleteIt" ]; then
+
+	if [ "Verbose" ]; then
+
+
+		echo "DEBUG: videoTracks: \"$videoTracks\""
+		echo "DEBUG: extraSubFiles : \"$extraSubFiles\""
+		echo "DEBUG: indexFile: \"$indexFile\""
+
+
+	fi
+
+
+	echo "Removing video tracks:"
+
+	for file in $videoTracks; do
+
+		fileToDel=`echo $file | cut -f2- -d  ':'`
+
+		if [ -f "$fileToDel" ]; then
+
+		echo "deleting:  \"$fileToDel\""
+
+			rm "$fileToDel"
+
+			if [ $? != "0" ]; then
+
+				echo "Sorry failed to delete \"$fileToDel\""
+				exit 1
+
+			fi
+
+
+		fi
+
+	done
+
+	echo "Removing extra subFiles"
+
+	for fileToDel in $extraSubFiles; do
+
+		if [ -f "$fileToDel" ]; then
+
+			echo "deleting:  \"$fileToDel\""
+
+			rm "$fileToDel"
+
+		fi
+
+	done
+
+	echo "Removing indexFile"
+
+	rm $IndexFile
 
 fi
