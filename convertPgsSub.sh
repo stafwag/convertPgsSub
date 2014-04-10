@@ -165,7 +165,7 @@ if [ -z "$inputFile" ] || [ -z "$outputFile" ]; then
 fi
 
 #
-# set the ouputFile to the fullpathname
+# set the outputFile to the fullpathname
 #
 
 
@@ -185,6 +185,30 @@ if [ "Verbose" ]; then
 echo >&2
 echo "DEBUG: outputDir=\"$outputDir\"" >&2
 echo "DEBUG: outputFile=\"$outputFile\"" >&2
+echo >&2
+
+fi
+
+#
+# set the inputFile to the fullpathname
+#
+
+inputDir=`dirname $inputFile`
+
+if [ "$inputDir" = "." ]; then
+
+	 inputDir=`pwd`/$inputDir
+
+fi 
+
+inputBaseFileName=`basename $inputFile`
+inputFile="${inputDir}/${inputBaseFileName}"
+
+if [ "Verbose" ]; then
+
+echo >&2
+echo "DEBUG: inputDir=\"$inputDir\"" >&2
+echo "DEBUG: inputFile=\"$inputFile\"" >&2
 echo >&2
 
 fi
