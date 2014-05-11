@@ -31,12 +31,19 @@ BDSup2SubJar="/home/staf/scripts/jar/BDSup2Sub.jar"
 ScriptName="`basename $0`"
 TmpDir="/home/staf/tmp"
 
+Version="1.0.0preXXX"
+
+echo >&2
+echo "convertPgsSub.sh  version $Version" >&2 
+echo "Copyright (C) 2014  Staf Wagemakers Belgie/Belgium" >&2 
+echo "----------------------------------------------------------------------" >&2
 
 #
 # Usage
 #
 
 usage() {
+
 
 	echo "Usage: $ScriptName -i inputFile.mkv -o outputFile.mkv [OPTION]" >&2
 	echo >&2
@@ -47,10 +54,41 @@ usage() {
 	echo " -v	enable verbosity" >&2
 	echo " -d	delete temporary files" >&2
 	echo >&2
-	exit 1
 
 }
 
+#
+# getFullPathDir
+#
+
+getFullPathDir() {
+
+
+	currentDir=`pwd`
+
+	myDir=`dirname $1`
+
+	cd "$myDir"
+
+	if [ $? != "0" ]; then
+
+		echo "$myDir"
+
+		return 1
+
+
+	fi
+
+	myDir=`pwd`
+
+	cd "$currentDir"
+
+	echo $myDir
+
+
+	return 0
+
+}
 
 #
 # Get the options
@@ -82,10 +120,12 @@ while getopts ":o:i:vdh" opt; do
 
     	h)
       		usage
+		exit 0
       		;;
 
     	\?)
       		usage
+		exit 0
       		;;
 
   esac
@@ -100,7 +140,7 @@ done
 if [ "$Verbose" ]; then
 
 
-echo "DEBUG: tmpDir= $TmpDir" >&2
+	echo "DEBUG: tmpDir= $TmpDir" >&2
 
 fi
 
@@ -157,30 +197,25 @@ fi
 if [ -z "$inputFile" ] || [ -z "$outputFile" ]; then   
 
 	echo >&2
-	echo "inputFile and outputFile are required" >&2
+	echo "Sorry, inputFile and outputFile are required" >&2
 	echo >&2
 
-	usage
+	usage 
+	exit 1
 
 fi
 
 #
-# set the outputFile to the fullpathname
+# set the outputFile to the fullpathdir
 #
 
 
-outputDir=`dirname $outputFile`
-
-if [ "$outputDir" = "." ]; then
-
-	 outputDir=`pwd`/$ouputDir
-
-fi 
+outputDir=`getFullPathDir $outputFile`
 
 outputBaseFileName=`basename $outputFile`
 outputFile="${outputDir}/${outputBaseFileName}"
 
-if [ "Verbose" ]; then
+if [ "$Verbose" ]; then
 
 echo >&2
 echo "DEBUG: outputDir=\"$outputDir\"" >&2
@@ -190,21 +225,15 @@ echo >&2
 fi
 
 #
-# set the inputFile to the fullpathname
+# set the inputFile to the fullpathdir
 #
 
-inputDir=`dirname $inputFile`
-
-if [ "$inputDir" = "." ]; then
-
-	 inputDir=`pwd`/$inputDir
-
-fi 
+inputDir=`getFullPathDir $inputFile`
 
 inputBaseFileName=`basename $inputFile`
 inputFile="${inputDir}/${inputBaseFileName}"
 
-if [ "Verbose" ]; then
+if [ "$Verbose" ]; then
 
 echo >&2
 echo "DEBUG: inputDir=\"$inputDir\"" >&2
@@ -324,7 +353,7 @@ videoTracks=`cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" |  sed -e 's
 
 echo "Executing mkvextract tracks $inputFile $videoTracks" >&2
 
-if [ "Verbose" ]; then
+if [ "$Verbose" ]; then
 
 	echo >&2
 	echo "DEBUG: videoTracks: \"$videoTracks\"" >&2
