@@ -154,11 +154,9 @@ debug_vars outputFile inputFile Verbose DeleteIt
 #
 
 if [[ -z $inputFile || -z $outputFile ]]; then   
-
 	msg "Sorry, inputFile and outputFile are required"
 	usage 
 	exit 1
-
 fi
 
 #
@@ -188,9 +186,8 @@ debug_vars inputDir inputFile
 # no input, dont exec
 #
 
-if [[ ! -r $inputFile ]]; then
+[[ ! -r $inputFile ]] && \
 	exit_msg 1 "Sorry, failed to read $inputFile"
-fi
 
 #
 # Create the VideoTmpDir or die
@@ -199,22 +196,14 @@ fi
 VideoTmpDir="$TmpDir/$(basename "$inputFile")/"
 
 if [[ ! -d $VideoTmpDir ]]; then
-
 	msg "Creating:  $VideoTmpDir"
-
-	mkdir -p "$VideoTmpDir"
-
-	if ((0 != $?)); then
-		exit_msg 1 "Sorry, failed to create $VideoTmpDir"
-	fi
+	mkdir -p "$VideoTmpDir" || \
+	  exit_msg 1 "Sorry, failed to create $VideoTmpDir"
 
 fi
 
-cd "$VideoTmpDir"
-
-if ((0 != $?)); then
-	exit_msg 1 "Sorry, cd $VideoTmpDir failed"
-fi
+cd "$VideoTmpDir" || \
+  exit_msg 1 "Sorry, cd $VideoTmpDir failed"
 
 #
 # Create the video index file or die
@@ -222,30 +211,21 @@ fi
 
 IndexFile="$VideoTmpDir/index"
 
-> $IndexFile > /dev/null
-
-if ((0 != $?)); then
-	exit_msg 1 "Sorry failed to create the IndexFile: $IndexFile"
-fi
+> $IndexFile > /dev/null || \
+  exit_msg 1 "Sorry failed to create the IndexFile: $IndexFile"
 
 msg "Creating indexFile: $IndexFile: running  mkvmerge -I $inputFile > $IndexFile"
 echo $IndexFile >&2
 
-mkvmerge -I  "$inputFile" > "$IndexFile"
-
-if ((0 != $?)); then
-	exit_msg 1 "Sorry, mkvmerge -I $inputFile failed"
-fi
+mkvmerge -I "$inputFile" > "$IndexFile" || \
+  exit_msg 1 "Sorry, mkvmerge -I $inputFile failed"
 
 #
 # check if there are pgs subtitles
 #
 
-cat "$IndexFile" | grep "PGS" > /dev/null
-
-if ((0 != $?)); then
-	exit_msg 1 "No, PGS subtitles found"
-fi
+grep -q "PGS" -- "$IndexFile" || \
+  exit_msg 1 "No, PGS subtitles found"
 
 #
 # Get the videoTracks from the index
@@ -266,11 +246,8 @@ echo "Executing mkvextract tracks $inputFile $videoTracks" >&2
 
 debug_vars videoTracks langTracks
 
-mkvextract tracks "$inputFile" $videoTracks
-
-if ((0 != $?)); then
-	exit_msg 1 "Sorry, mkvextract tracks $inputFile $videoTracks failed"
-fi
+mkvextract tracks "$inputFile" $videoTracks || \
+  exit_msg 1 "Sorry, mkvextract tracks $inputFile $videoTracks failed"
 
 declare mergeTracks extraSubFiles
 
@@ -279,32 +256,19 @@ declare mergeTracks extraSubFiles
 #
 
 for track in $videoTracks; do
-
 	msg "t: $track"
-
 	trackFile="$(echo $track | cut -f2 -d ':')"
-
-	echo "$track" | grep -E "pgs$"
-
-	if ((0 == $?)); then
-
+	if echo "$track" | grep -E "pgs$" ; then
 		outBasename="$(echo "$trackFile" | cut -f 1 -d '.')"
 		outSub="${outBasename}.sub"
 
-		java -jar "$BDSup2SubJar" "$trackFile" -o "${trackFile}.sub"
-
-		if ((0 != $?)); then
-			exit_msg 1 "Sorry, subtitle convertion failed"
-		fi
+		java -jar "$BDSup2SubJar" "$trackFile" -o "${trackFile}.sub" || \
+		  exit_msg 1 "Sorry, subtitle convertion failed"
 
 		extraSubFiles="${extraSubFiles} ${trackFile}.sub ${trackFile}.idx"
-
 		trackFile="${trackFile}.idx"
-
 	fi
-
 	mergeTracks="$mergeTracks $trackFile"
-
 done 
 
 #
@@ -324,11 +288,8 @@ debug_vars langTracks mergeTracks videoTracks
 # merge them
 #
 
-mkvmerge -o "${outputFile}" $langTracks
-
-if ((0 != $?)); then
-	exit_msg 1 "Sorry, mkvmerge failed \"mkvmerge -o ${outputFile}_lang $langTracks\""
-fi
+mkvmerge -o "${outputFile}" $langTracks || \
+  exit_msg 1 "Sorry, mkvmerge failed \"mkvmerge -o ${outputFile}_lang $langTracks\""
 
 ((Verbose)) && \
   msg "DEBUG \"mkvmerge -o ${outputFile}_lang $langTracks\" executed"
@@ -338,45 +299,25 @@ fi
 #
 
 if ((DeleteIt)); then
-
 	debug_vars videoTracks extraSubFiles indexFile
-
 	echo "Removing video tracks:"
-
 	for file in $videoTracks; do
-
 		fileToDel="$(echo $file | cut -f2- -d  ':')"
-
 		if [[ -f $fileToDel ]]; then
-
-		echo "deleting:  \"$fileToDel\""
-
-			rm "$fileToDel"
-
-			if ((0 != $?)); then
-				exit_msg 1 "Sorry failed to delete \"$fileToDel\""
-			fi
-
+			echo "deleting:  \"$fileToDel\""
+			rm ${Verbose+-v} -- "$fileToDel" || \
+			  exit_msg 1 "Sorry failed to delete \"$fileToDel\""
 		fi
-
 	done
 
 	echo "Removing extra subFiles"
-
 	for fileToDel in $extraSubFiles; do
-
 		if [[ -f $fileToDel ]]; then
-
 			echo "deleting:  \"$fileToDel\""
-
-			rm "$fileToDel"
-
+			rm ${Verbose+-v} -- "$fileToDel"
 		fi
-
 	done
 
 	echo "Removing indexFile"
-
-	rm "$IndexFile"
-
+	rm ${Verbose+-v} -- "$IndexFile"
 fi
