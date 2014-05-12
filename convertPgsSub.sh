@@ -71,7 +71,7 @@ getFullPathDir() {
 
 	cd "$myDir"
 
-	if [ $? != "0" ]; then
+	if ((0 != $?)); then
 
 		echo "$myDir"
 
@@ -136,19 +136,19 @@ esac ; done ; shift $((OPTIND-1))
 
 debug_vars TmpDir
 
-if [ ! -d $TmpDir ]; then
+if [[ ! -d $TmpDir ]]; then
 	exit_msg 1 "Sorry TmpDir: $TmpDir is not a directory"
 fi
 
 TmpDir="/home/staf/tmp/$(basename "$ScriptName")"
 
-if [ ! -d $TmpDir ]; then
+if [[ ! -d $TmpDir ]]; then
 
 	msg "Creating $TmpDir:"
 
 	mkdir "$TmpDir"
 
-	if [ $? != "0" ]; then
+	if ((0 != $?)); then
 
 		msg "Sorry, failed to create $TmpDir"
 
@@ -167,7 +167,7 @@ debug_vars outputFile inputFile Verbose DeleteIt
 # outputFile and inputFile required
 #
 
-if [ -z "$inputFile" ] || [ -z "$outputFile" ]; then   
+if [[ -z $inputFile || -z $outputFile ]]; then   
 
 	msg "Sorry, inputFile and outputFile are required"
 	usage 
@@ -202,7 +202,7 @@ debug_vars inputDir inputFile
 # no input, dont exec
 #
 
-if [ ! -r "$inputFile" ]; then
+if [[ ! -r $inputFile ]]; then
 	exit_msg 1 "Sorry, failed to read $inputFile"
 fi
 
@@ -212,13 +212,13 @@ fi
 
 VideoTmpDir="$TmpDir/$(basename "$inputFile")/"
 
-if [ ! -d "$VideoTmpDir" ]; then
+if [[ ! -d $VideoTmpDir ]]; then
 
 	msg "Creating:  $VideoTmpDir"
 
 	mkdir -p "$VideoTmpDir"
 
-	if [ $? != "0" ]; then
+	if ((0 != $?)); then
 		exit_msg 1 "Sorry, failed to create $VideoTmpDir"
 	fi
 
@@ -226,7 +226,7 @@ fi
 
 cd "$VideoTmpDir"
 
-if [ $? != "0" ]; then
+if ((0 != $?)); then
 	exit_msg 1 "Sorry, cd $VideoTmpDir failed"
 fi
 
@@ -238,7 +238,7 @@ IndexFile="$VideoTmpDir/index"
 
 > $IndexFile > /dev/null
 
-if [ $? != "0" ]; then
+if ((0 != $?)); then
 	exit_msg 1 "Sorry failed to create the IndexFile: $IndexFile"
 fi
 
@@ -247,7 +247,7 @@ echo $IndexFile >&2
 
 mkvmerge -I  "$inputFile" > "$IndexFile"
 
-if [ $? != "0" ]; then
+if ((0 != $?)); then
 	exit_msg 1 "Sorry, mkvmerge -I $inputFile failed"
 fi
 
@@ -257,7 +257,7 @@ fi
 
 cat "$IndexFile" | grep "PGS" > /dev/null
 
-if [ $? != "0" ]; then
+if ((0 != $?)); then
 	exit_msg 1 "No, PGS subtitles found"
 fi
 
@@ -282,7 +282,7 @@ debug_vars videoTracks langTracks
 
 mkvextract tracks "$inputFile" $videoTracks
 
-if [ $? != "0" ]; then
+if ((0 != $?)); then
 	exit_msg 1 "Sorry, mkvextract tracks $inputFile $videoTracks failed"
 fi
 
@@ -300,14 +300,14 @@ for track in $videoTracks; do
 
 	echo "$track" | grep -E "pgs$"
 
-	if [ $? = "0" ]; then
+	if ((0 == $?)); then
 
 		outBasename="$(echo "$trackFile" | cut -f 1 -d '.')"
 		outSub="${outBasename}.sub"
 
 		java -jar "$BDSup2SubJar" "$trackFile" -o "${trackFile}.sub"
 
-		if [ $? != "0" ]; then
+		if ((0 != $?)); then
 			exit_msg 1 "Sorry, subtitle convertion failed"
 		fi
 
@@ -340,7 +340,7 @@ debug_vars langTracks mergeTracks videoTracks
 
 mkvmerge -o "${outputFile}" $langTracks
 
-if [ $? != "0" ]; then
+if ((0 != $?)); then
 	exit_msg 1 "Sorry, mkvmerge failed \"mkvmerge -o ${outputFile}_lang $langTracks\""
 fi
 
@@ -351,7 +351,7 @@ fi
 # delete the temporary files
 #
 
-if [ "$DeleteIt" ]; then
+if ((DeleteIt)); then
 
 	debug_vars videoTracks extraSubFiles indexFile
 
@@ -361,13 +361,13 @@ if [ "$DeleteIt" ]; then
 
 		fileToDel="$(echo $file | cut -f2- -d  ':')"
 
-		if [ -f "$fileToDel" ]; then
+		if [[ -f $fileToDel ]]; then
 
 		echo "deleting:  \"$fileToDel\""
 
 			rm "$fileToDel"
 
-			if [ $? != "0" ]; then
+			if ((0 != $?)); then
 				exit_msg 1 "Sorry failed to delete \"$fileToDel\""
 			fi
 
@@ -379,7 +379,7 @@ if [ "$DeleteIt" ]; then
 
 	for fileToDel in $extraSubFiles; do
 
-		if [ -f "$fileToDel" ]; then
+		if [[ -f $fileToDel ]]; then
 
 			echo "deleting:  \"$fileToDel\""
 
