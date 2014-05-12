@@ -91,6 +91,30 @@ getFullPathDir() {
 
 }
 
+debug_vars() {
+	((! Verbose || 0 == $#)) && return 0
+	{	echo ''
+		declare -p -- "$@" | sed -e 's/^/DEBUG: /'
+		echo ''
+	} >&2
+	return 0
+}
+
+msg() {
+	{	echo ''
+		printf '%s\n' "$@"
+		echo ''
+	} >&2
+	return 0
+}
+
+exit_msg() {
+	local ret=$1
+	shift
+	msg "$@"
+	exit "$ret"
+}
+
 #
 # Get the options
 #
@@ -110,37 +134,23 @@ esac ; done ; shift $((OPTIND-1))
 # set TmpDir
 #
 
-if [ "$Verbose" ]; then
-
-
-	echo "DEBUG: tmpDir= $TmpDir" >&2
-
-fi
+debug_vars TmpDir
 
 if [ ! -d $TmpDir ]; then
-
-	echo "Sorry TmpDir: $TmpDir is not a directory" >&2
-	exit 1
-
+	exit_msg 1 "Sorry TmpDir: $TmpDir is not a directory"
 fi
 
 TmpDir="/home/staf/tmp/$(basename "$ScriptName")"
 
 if [ ! -d $TmpDir ]; then
 
-	echo >&2
-	echo "Creating $TmpDir:" >&2
-	echo >&2
-
+	msg "Creating $TmpDir:"
 
 	mkdir "$TmpDir"
 
 	if [ $? != "0" ]; then
 
-		echo >&2
-		echo "Sorry, failed to create $TmpDir" >&2
-		echo >&2
-
+		msg "Sorry, failed to create $TmpDir"
 
 	fi 
 
@@ -151,17 +161,7 @@ fi
 # settings
 #
 
-if [ "$Verbose" ]; then
-
-
-echo >&2
-echo "outputFile=\"$outputFile\"" >&2
-echo "inputFile=\"$inputFile\"" >&2
-echo "verbose=\"$Verbose\"" >&2
-echo "DeleteIt=\"$DeleteIt\"" >&2
-echo >&2
-
-fi
+debug_vars outputFile inputFile Verbose DeleteIt
 
 #
 # outputFile and inputFile required
@@ -169,10 +169,7 @@ fi
 
 if [ -z "$inputFile" ] || [ -z "$outputFile" ]; then   
 
-	echo >&2
-	echo "Sorry, inputFile and outputFile are required" >&2
-	echo >&2
-
+	msg "Sorry, inputFile and outputFile are required"
 	usage 
 	exit 1
 
@@ -188,14 +185,7 @@ outputDir="$(getFullPathDir "$outputFile")"
 outputBaseFileName="$(basename "$outputFile")"
 outputFile="${outputDir}/${outputBaseFileName}"
 
-if [ "$Verbose" ]; then
-
-echo >&2
-echo "DEBUG: outputDir=\"$outputDir\"" >&2
-echo "DEBUG: outputFile=\"$outputFile\"" >&2
-echo >&2
-
-fi
+debug_vars outputDir outputFile
 
 #
 # set the inputFile to the fullpathdir
@@ -206,26 +196,14 @@ inputDir="$(getFullPathDir "$inputFile")"
 inputBaseFileName="$(basename "$inputFile")"
 inputFile="${inputDir}/${inputBaseFileName}"
 
-if [ "$Verbose" ]; then
-
-echo >&2
-echo "DEBUG: inputDir=\"$inputDir\"" >&2
-echo "DEBUG: inputFile=\"$inputFile\"" >&2
-echo >&2
-
-fi
+debug_vars inputDir inputFile
 
 #
 # no input, dont exec
 #
 
 if [ ! -r "$inputFile" ]; then
-
-	echo >&2
-	echo "Sorry, failed to read $inputFile" >&2
-	echo >&2
-	exit 1
-
+	exit_msg 1 "Sorry, failed to read $inputFile"
 fi
 
 #
@@ -236,19 +214,12 @@ VideoTmpDir="$TmpDir/$(basename "$inputFile")/"
 
 if [ ! -d "$VideoTmpDir" ]; then
 
-	echo >&2
-	echo "Creating:  $VideoTmpDir" >&2
-	echo >&2
+	msg "Creating:  $VideoTmpDir"
 
 	mkdir -p "$VideoTmpDir"
 
 	if [ $? != "0" ]; then
-
-		echo >&2
-		echo "Sorry, failed to create $VideoTmpDir" >&2
-		echo >&2
-		exit 1
-
+		exit_msg 1 "Sorry, failed to create $VideoTmpDir"
 	fi
 
 fi
@@ -256,13 +227,7 @@ fi
 cd "$VideoTmpDir"
 
 if [ $? != "0" ]; then
-
-	echo >&2
-	echo "Sorry, cd $VideoTmpDir failed" >&2
-	echo >&2
-
-	exit 1
-
+	exit_msg 1 "Sorry, cd $VideoTmpDir failed"
 fi
 
 #
@@ -274,28 +239,16 @@ IndexFile="$VideoTmpDir/index"
 > $IndexFile > /dev/null
 
 if [ $? != "0" ]; then
-
-	echo >&2
-	echo "Sorry failed to create the IndexFile: $IndexFile" >&2
-	echo >&2
-
-	exit 1
-
+	exit_msg 1 "Sorry failed to create the IndexFile: $IndexFile"
 fi
 
-echo >&2
-echo "Creating indexFile: $IndexFile: running  mkvmerge -I $inputFile > $IndexFile" >&2
+msg "Creating indexFile: $IndexFile: running  mkvmerge -I $inputFile > $IndexFile"
 echo $IndexFile >&2
 
 mkvmerge -I  "$inputFile" > "$IndexFile"
 
 if [ $? != "0" ]; then
-
-	echo >&2
-	echo "Sorry, mkvmerge -I $inputFile failed" >&2
-	echo >&2
-	exit 1
-
+	exit_msg 1 "Sorry, mkvmerge -I $inputFile failed"
 fi
 
 #
@@ -305,13 +258,7 @@ fi
 cat "$IndexFile" | grep "PGS" > /dev/null
 
 if [ $? != "0" ]; then
-
-	echo >&2
-	echo "No, PGS subtitles found" >&2
-	echo >&2
-	exit 1
-
-
+	exit_msg 1 "No, PGS subtitles found"
 fi
 
 #
@@ -331,29 +278,15 @@ videoTracks=$( \
 
 echo "Executing mkvextract tracks $inputFile $videoTracks" >&2
 
-if [ "$Verbose" ]; then
-
-	echo >&2
-	echo "DEBUG: videoTracks: \"$videoTracks\"" >&2
-	echo "DEBUG: langTracks: \"$langTracks\"" >&2
-	echo >&2
-
-fi
+debug_vars videoTracks langTracks
 
 mkvextract tracks "$inputFile" $videoTracks
 
 if [ $? != "0" ]; then
-
-	echo >&2
-	echo "Sorry, mkvextract tracks $inputFile $videoTracks failed" >&2
-	echo >&2
-	exit 1
-
-
+	exit_msg 1 "Sorry, mkvextract tracks $inputFile $videoTracks failed"
 fi
 
-mergeTracks=""
-extraSubFiles=""
+declare mergeTracks extraSubFiles
 
 #
 # convert the pgs subtitles
@@ -361,9 +294,7 @@ extraSubFiles=""
 
 for track in $videoTracks; do
 
-	echo >&2
-	echo "t: $track" >&2
-	echo >&2
+	msg "t: $track"
 
 	trackFile="$(echo $track | cut -f2 -d ':')"
 
@@ -377,20 +308,12 @@ for track in $videoTracks; do
 		java -jar "$BDSup2SubJar" "$trackFile" -o "${trackFile}.sub"
 
 		if [ $? != "0" ]; then
-
-			echo >&2
-			echo "Sorry, subtitle convertion failed" >&2
-			echo >&2
-
-			exit 1
-
-
+			exit_msg 1 "Sorry, subtitle convertion failed"
 		fi
 
 		extraSubFiles="${extraSubFiles} ${trackFile}.sub ${trackFile}.idx"
 
 		trackFile="${trackFile}.idx"
-
 
 	fi
 
@@ -409,15 +332,7 @@ langTracks="$( \
   tr "\n" " "
 )"
 
-if [ "$Verbose" ]; then
-
-	echo >&2
-	echo "DEBUG: langTracks=\"$langTracks\"" >&2
-	echo "DEBUG: mergeTracks=\"$mergeTracks\"" >&2
-	echo "DEBUG: videoTracks=\"$videoTracks\"" >&2
-	echo >&2
-
-fi
+debug_vars langTracks mergeTracks videoTracks
 
 #
 # merge them
@@ -426,22 +341,11 @@ fi
 mkvmerge -o "${outputFile}" $langTracks
 
 if [ $? != "0" ]; then
-
-	echo >&2
-	echo "Sorry, mkvmerge failed \"mkvmerge -o ${outputFile}_lang $langTracks\"" >&2
-	echo >&2
-
-	exit 1
-
+	exit_msg 1 "Sorry, mkvmerge failed \"mkvmerge -o ${outputFile}_lang $langTracks\""
 fi
 
-if [ "$Verbose" ]; then
-
-	echo >&2
-	echo "DEBUG \"mkvmerge -o ${outputFile}_lang $langTracks\" executed"
-	echo >&2
-
-fi
+((Verbose)) && \
+  msg "DEBUG \"mkvmerge -o ${outputFile}_lang $langTracks\" executed"
 
 #
 # delete the temporary files
@@ -449,16 +353,7 @@ fi
 
 if [ "$DeleteIt" ]; then
 
-	if [ "Verbose" ]; then
-
-
-		echo "DEBUG: videoTracks: \"$videoTracks\""
-		echo "DEBUG: extraSubFiles : \"$extraSubFiles\""
-		echo "DEBUG: indexFile: \"$indexFile\""
-
-
-	fi
-
+	debug_vars videoTracks extraSubFiles indexFile
 
 	echo "Removing video tracks:"
 
@@ -473,12 +368,8 @@ if [ "$DeleteIt" ]; then
 			rm "$fileToDel"
 
 			if [ $? != "0" ]; then
-
-				echo "Sorry failed to delete \"$fileToDel\""
-				exit 1
-
+				exit_msg 1 "Sorry failed to delete \"$fileToDel\""
 			fi
-
 
 		fi
 
