@@ -28,7 +28,7 @@
 
 BDSup2SubJar="/home/staf/scripts/jar/BDSup2Sub.jar"
 
-ScriptName="`basename $0`"
+ScriptName="$(basename "$0")"
 TmpDir="/home/staf/tmp"
 
 Version="1.0.0preXXX"
@@ -65,9 +65,9 @@ usage() {
 getFullPathDir() {
 
 
-	currentDir=`pwd`
+	currentDir="$(pwd)"
 
-	myDir=`dirname $1`
+	myDir="$(dirname "$1")"
 
 	cd "$myDir"
 
@@ -80,7 +80,7 @@ getFullPathDir() {
 
 	fi
 
-	myDir=`pwd`
+	myDir="$(pwd)"
 
 	cd "$currentDir"
 
@@ -102,7 +102,7 @@ DeleteIt=""
 
 while getopts ":o:i:vdh" opt; do
 
-  	case $opt in
+  	case "$opt" in
 
     	o)
 		outputFile="$OPTARG"
@@ -152,7 +152,7 @@ if [ ! -d $TmpDir ]; then
 
 fi
 
-TmpDir="/home/staf/tmp/`basename $ScriptName`"
+TmpDir="/home/staf/tmp/$(basename "$ScriptName")"
 
 if [ ! -d $TmpDir ]; then
 
@@ -161,7 +161,7 @@ if [ ! -d $TmpDir ]; then
 	echo >&2
 
 
-	mkdir $TmpDir
+	mkdir "$TmpDir"
 
 	if [ $? != "0" ]; then
 
@@ -211,9 +211,9 @@ fi
 #
 
 
-outputDir=`getFullPathDir $outputFile`
+outputDir="$(getFullPathDir "$outputFile")"
 
-outputBaseFileName=`basename $outputFile`
+outputBaseFileName="$(basename "$outputFile")"
 outputFile="${outputDir}/${outputBaseFileName}"
 
 if [ "$Verbose" ]; then
@@ -229,9 +229,9 @@ fi
 # set the inputFile to the fullpathdir
 #
 
-inputDir=`getFullPathDir $inputFile`
+inputDir="$(getFullPathDir "$inputFile")"
 
-inputBaseFileName=`basename $inputFile`
+inputBaseFileName="$(basename "$inputFile")"
 inputFile="${inputDir}/${inputBaseFileName}"
 
 if [ "$Verbose" ]; then
@@ -260,7 +260,7 @@ fi
 # Create the VideoTmpDir or die
 #
 
-VideoTmpDir="$TmpDir/`basename $inputFile`/"
+VideoTmpDir="$TmpDir/$(basename "$inputFile")/"
 
 if [ ! -d "$VideoTmpDir" ]; then
 
@@ -268,7 +268,7 @@ if [ ! -d "$VideoTmpDir" ]; then
 	echo "Creating:  $VideoTmpDir" >&2
 	echo >&2
 
-	mkdir -p $VideoTmpDir
+	mkdir -p "$VideoTmpDir"
 
 	if [ $? != "0" ]; then
 
@@ -281,7 +281,7 @@ if [ ! -d "$VideoTmpDir" ]; then
 
 fi
 
-cd $VideoTmpDir
+cd "$VideoTmpDir"
 
 if [ $? != "0" ]; then
 
@@ -315,7 +315,7 @@ echo >&2
 echo "Creating indexFile: $IndexFile: running  mkvmerge -I $inputFile > $IndexFile" >&2
 echo $IndexFile >&2
 
-mkvmerge -I  $inputFile > $IndexFile
+mkvmerge -I  "$inputFile" > "$IndexFile"
 
 if [ $? != "0" ]; then
 
@@ -330,7 +330,7 @@ fi
 # check if there are pgs subtitles
 #
 
-cat $IndexFile | grep "PGS" > /dev/null
+cat "$IndexFile" | grep "PGS" > /dev/null
 
 if [ $? != "0" ]; then
 
@@ -346,7 +346,12 @@ fi
 # Get the videoTracks from the index
 #
 
-videoTracks=`cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" |  sed -e 's/.*ID \(.*:\) \(.*\) (\(.*\)).*language:\(...\) .*$/\1\2\.\4.\3/' | sed -e 's/^\(.*\.\).*\(...\)$/\1\2/' | tr "A-Z" "a-z" | sed -e 's/^\(.*\)\:\(.*\)\.\(.*\)$/\1\:\2\.\1_\3/' | tr "\n" " "`
+videoTracks=$( \
+  cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" | \
+  sed -e 's/.*ID \(.*:\) \(.*\) (\(.*\)).*language:\(...\) .*$/\1\2\.\4.\3/' | \
+  sed -e 's/^\(.*\.\).*\(...\)$/\1\2/' | tr "A-Z" "a-z" | \
+  sed -e 's/^\(.*\)\:\(.*\)\.\(.*\)$/\1\:\2\.\1_\3/' | tr "\n" " "
+)
 
 #
 # extractIt
@@ -363,7 +368,7 @@ if [ "$Verbose" ]; then
 
 fi
 
-mkvextract tracks $inputFile $videoTracks
+mkvextract tracks "$inputFile" $videoTracks
 
 if [ $? != "0" ]; then
 
@@ -388,16 +393,16 @@ for track in $videoTracks; do
 	echo "t: $track" >&2
 	echo >&2
 
-	trackFile=`echo $track | cut -f2 -d ':'`
+	trackFile="$(echo $track | cut -f2 -d ':')"
 
-	echo $track | grep -E "pgs$"
+	echo "$track" | grep -E "pgs$"
 
 	if [ $? = "0" ]; then
 
-		outBasename=`echo $trackFile | cut -f 1 -d '.'`
+		outBasename="$(echo "$trackFile" | cut -f 1 -d '.')"
 		outSub="${outBasename}.sub"
 
-		java -jar $BDSup2SubJar  $trackFile -o $trackFile.sub
+		java -jar "$BDSup2SubJar" "$trackFile" -o "${trackFile}.sub"
 
 		if [ $? != "0" ]; then
 
@@ -425,7 +430,12 @@ done
 # set the lang for each track
 #
 
-langTracks=`echo $mergeTracks | tr " " "\n" | sed '/^$/d' | sed -e 's/^\(\([^.]*\)\.\([^.]*\)\..*\)$/--language 0:\3 \1/' | tr "\n" " "`
+langTracks="$( \
+  echo $mergeTracks | tr " " "\n" | \
+  sed '/^$/d' | \
+  sed -e 's/^\(\([^.]*\)\.\([^.]*\)\..*\)$/--language 0:\3 \1/' | \
+  tr "\n" " "
+)"
 
 if [ "$Verbose" ]; then
 
@@ -441,7 +451,7 @@ fi
 # merge them
 #
 
-mkvmerge -o ${outputFile} $langTracks
+mkvmerge -o "${outputFile}" $langTracks
 
 if [ $? != "0" ]; then
 
@@ -482,7 +492,7 @@ if [ "$DeleteIt" ]; then
 
 	for file in $videoTracks; do
 
-		fileToDel=`echo $file | cut -f2- -d  ':'`
+		fileToDel="$(echo $file | cut -f2- -d  ':')"
 
 		if [ -f "$fileToDel" ]; then
 
@@ -518,6 +528,6 @@ if [ "$DeleteIt" ]; then
 
 	echo "Removing indexFile"
 
-	rm $IndexFile
+	rm "$IndexFile"
 
 fi
