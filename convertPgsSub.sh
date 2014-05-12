@@ -33,28 +33,29 @@ TmpDir="/home/staf/tmp"
 
 Version="1.0.0preXXX"
 
-echo >&2
-echo "convertPgsSub.sh  version $Version" >&2 
-echo "Copyright (C) 2014  Staf Wagemakers Belgie/Belgium" >&2 
-echo "----------------------------------------------------------------------" >&2
+cat <<-_END_OF_HEADER_ >&2
+	${ScriptName}  version ${Version}
+	Copyright (C) 2014  Staf Wagemakers Belgie/Belgium
+	----------------------------------------------------------------------
+_END_OF_HEADER_
 
 #
 # Usage
 #
 
 usage() {
+	cat <<-_END_OF_HELP_ >&2
+		Usage: ${ScriptName} -i inputFile.mkv -o outputFile.mkv [OPTION]
 
+		Options:
 
-	echo "Usage: $ScriptName -i inputFile.mkv -o outputFile.mkv [OPTION]" >&2
-	echo >&2
-	echo "Options:">&2
-	echo >&2
-	echo " -i	inputFile" >&2
-	echo " -o	outputFile" >&2
-	echo " -v	enable verbosity" >&2
-	echo " -d	delete temporary files" >&2
-	echo >&2
+		 -i	inputFile
+		 -o	outputFile
+		 -v	enable verbosity
+		 -d	delete temporary files
 
+	_END_OF_HELP_
+	return 0
 }
 
 #
