@@ -58,39 +58,6 @@ usage() {
 	return 0
 }
 
-#
-# getFullPathDir
-#
-
-getFullPathDir() {
-
-
-	currentDir="$(pwd)"
-
-	myDir="$(dirname "$1")"
-
-	cd "$myDir"
-
-	if ((0 != $?)); then
-
-		echo "$myDir"
-
-		return 1
-
-
-	fi
-
-	myDir="$(pwd)"
-
-	cd "$currentDir"
-
-	echo $myDir
-
-
-	return 0
-
-}
-
 debug_vars() {
 	((! Verbose || 0 == $#)) && return 0
 	{	echo ''
@@ -161,33 +128,20 @@ fi
 
 #
 # set the outputFile to the fullpathdir
-#
-
-
-outputDir="$(getFullPathDir "$outputFile")"
-
-outputBaseFileName="$(basename "$outputFile")"
-outputFile="${outputDir}/${outputBaseFileName}"
-
-debug_vars outputDir outputFile
-
-#
 # set the inputFile to the fullpathdir
 #
 
-inputDir="$(getFullPathDir "$inputFile")"
+outputFile="$(cd "${outputFile%/*}" && echo "$PWD")/${outputFile##*/}"
+inputFile="$( cd "${inputFile%/*}"  && echo "$PWD")/${inputFile##*/}"
 
-inputBaseFileName="$(basename "$inputFile")"
-inputFile="${inputDir}/${inputBaseFileName}"
-
-debug_vars inputDir inputFile
+debug_vars outputFile inputFile
 
 #
 # no input, dont exec
 #
 
 [[ ! -r $inputFile ]] && \
-	exit_msg 1 "Sorry, failed to read $inputFile"
+  exit_msg 1 "Sorry, failed to read $inputFile"
 
 #
 # Create the VideoTmpDir or die
