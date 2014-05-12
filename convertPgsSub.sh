@@ -95,44 +95,16 @@ getFullPathDir() {
 # Get the options
 #
 
-outputFile=""
-inputFile=""
-Verbose=""
-DeleteIt=""
+declare    outputFile inputFile
+declare -i Verbose DeleteIt
 
-while getopts ":o:i:vdh" opt; do
-
-  	case "$opt" in
-
-    	o)
-		outputFile="$OPTARG"
-		;;
-    	i)
-		inputFile="$OPTARG"
-		;;
-
-	v)
-		Verbose=1
-		;;
-
-	d)
-		DeleteIt=1
-		;;
-
-    	h)
-      		usage
-		exit 0
-      		;;
-
-    	\?)
-      		usage
-		exit 0
-      		;;
-
-  esac
-
-
-done
+while getopts ":o:i:vdh" opt; do case "$opt" in
+  (o)	outputFile="$OPTARG" ;;
+  (i)	inputFile="$OPTARG"  ;;
+  (v)	Verbose=1            ;;
+  (d)	DeleteIt=1           ;;
+  (h|*)	usage ; exit 0       ;;
+esac ; done ; shift $((OPTIND-1))
 
 #
 # set TmpDir
