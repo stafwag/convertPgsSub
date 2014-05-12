@@ -25,13 +25,13 @@
 # basic settings
 #
 
+declare \
+  Version="1.0.0preXXX" \
+  ScriptName="${0##*/}"
 
-BDSup2SubJar="/home/staf/scripts/jar/BDSup2Sub.jar"
+BDSup2SubJar="${HOME}/scripts/jar/BDSup2Sub.jar"
 
-ScriptName="$(basename "$0")"
-TmpDir="/home/staf/tmp"
-
-Version="1.0.0preXXX"
+TmpDir="${HOME}/tmp/${ScriptName}"
 
 cat <<-_END_OF_HEADER_ >&2
 	${ScriptName}  version ${Version}
@@ -137,24 +137,10 @@ esac ; done ; shift $((OPTIND-1))
 debug_vars TmpDir
 
 if [[ ! -d $TmpDir ]]; then
-	exit_msg 1 "Sorry TmpDir: $TmpDir is not a directory"
-fi
-
-TmpDir="/home/staf/tmp/$(basename "$ScriptName")"
-
-if [[ ! -d $TmpDir ]]; then
-
+	msg "Sorry TmpDir: $TmpDir is not a directory"
 	msg "Creating $TmpDir:"
-
-	mkdir "$TmpDir"
-
-	if ((0 != $?)); then
-
-		msg "Sorry, failed to create $TmpDir"
-
-	fi 
-
-
+	mkdir "${Verbose+-v}" -- "$TmpDir" || \
+	  exit_msg 1 "Sorry, failed to create $TmpDir"
 fi
 
 #
