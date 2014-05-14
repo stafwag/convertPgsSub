@@ -25,272 +25,139 @@
 # basic settings
 #
 
+declare \
+  Version="1.0.0preXXX" \
+  ScriptName="${0##*/}"
 
-BDSup2SubJar="/home/staf/scripts/jar/BDSup2Sub.jar"
+BDSup2SubJar="${HOME}/scripts/jar/BDSup2Sub.jar"
 
-ScriptName="`basename $0`"
-TmpDir="/home/staf/tmp"
+TmpDir="${HOME}/tmp/${ScriptName}"
 
-Version="1.0.0preXXX"
-
-echo >&2
-echo "convertPgsSub.sh  version $Version" >&2 
-echo "Copyright (C) 2014  Staf Wagemakers Belgie/Belgium" >&2 
-echo "----------------------------------------------------------------------" >&2
+cat <<-_END_OF_HEADER_ >&2
+	${ScriptName}  version ${Version}
+	Copyright (C) 2014  Staf Wagemakers Belgie/Belgium
+	----------------------------------------------------------------------
+_END_OF_HEADER_
 
 #
 # Usage
 #
 
 usage() {
+	cat <<-_END_OF_HELP_ >&2
+		Usage: ${ScriptName} -i inputFile.mkv -o outputFile.mkv [OPTION]
 
+		Options:
 
-	echo "Usage: $ScriptName -i inputFile.mkv -o outputFile.mkv [OPTION]" >&2
-	echo >&2
-	echo "Options:">&2
-	echo >&2
-	echo " -i	inputFile" >&2
-	echo " -o	outputFile" >&2
-	echo " -v	enable verbosity" >&2
-	echo " -d	delete temporary files" >&2
-	echo >&2
+		 -i	inputFile
+		 -o	outputFile
+		 -v	enable verbosity
+		 -d	delete temporary files
 
+	_END_OF_HELP_
+	return 0
 }
 
-#
-# getFullPathDir
-#
-
-getFullPathDir() {
-
-
-	currentDir=`pwd`
-
-	myDir=`dirname $1`
-
-	cd "$myDir"
-
-	if [ $? != "0" ]; then
-
-		echo "$myDir"
-
-		return 1
-
-
-	fi
-
-	myDir=`pwd`
-
-	cd "$currentDir"
-
-	echo $myDir
-
-
+debug_vars() {
+	((! Verbose || 0 == $#)) && return 0
+	{	echo ''
+		declare -p -- "$@" | sed -e 's/^/DEBUG: /'
+		echo ''
+	} >&2
 	return 0
+}
 
+msg() {
+	{	echo ''
+		printf '%s\n' "$@"
+		echo ''
+	} >&2
+	return 0
+}
+
+exit_msg() {
+	local ret=$1
+	shift
+	msg "$@"
+	exit "$ret"
 }
 
 #
 # Get the options
 #
 
-outputFile=""
-inputFile=""
-Verbose=""
-DeleteIt=""
+declare    outputFile inputFile
+declare -i Verbose DeleteIt
 
-while getopts ":o:i:vdh" opt; do
-
-  	case $opt in
-
-    	o)
-		outputFile="$OPTARG"
-		;;
-    	i)
-		inputFile="$OPTARG"
-		;;
-
-	v)
-		Verbose=1
-		;;
-
-	d)
-		DeleteIt=1
-		;;
-
-    	h)
-      		usage
-		exit 0
-      		;;
-
-    	\?)
-      		usage
-		exit 0
-      		;;
-
-  esac
-
-
-done
+while getopts ":o:i:vdh" opt; do case "$opt" in
+  (o)	outputFile="$OPTARG" ;;
+  (i)	inputFile="$OPTARG"  ;;
+  (v)	Verbose=1            ;;
+  (d)	DeleteIt=1           ;;
+  (h|*)	usage ; exit 0       ;;
+esac ; done ; shift $((OPTIND-1))
 
 #
 # set TmpDir
 #
 
-if [ "$Verbose" ]; then
+debug_vars TmpDir
 
-
-	echo "DEBUG: tmpDir= $TmpDir" >&2
-
-fi
-
-if [ ! -d $TmpDir ]; then
-
-	echo "Sorry TmpDir: $TmpDir is not a directory" >&2
-	exit 1
-
-fi
-
-TmpDir="/home/staf/tmp/`basename $ScriptName`"
-
-if [ ! -d $TmpDir ]; then
-
-	echo >&2
-	echo "Creating $TmpDir:" >&2
-	echo >&2
-
-
-	mkdir $TmpDir
-
-	if [ $? != "0" ]; then
-
-		echo >&2
-		echo "Sorry, failed to create $TmpDir" >&2
-		echo >&2
-
-
-	fi 
-
-
+if [[ ! -d $TmpDir ]]; then
+	msg "Sorry TmpDir: $TmpDir is not a directory"
+	msg "Creating $TmpDir:"
+	mkdir "${Verbose+-v}" -- "$TmpDir" || \
+	  exit_msg 1 "Sorry, failed to create $TmpDir"
 fi
 
 #
 # settings
 #
 
-if [ "$Verbose" ]; then
-
-
-echo >&2
-echo "outputFile=\"$outputFile\"" >&2
-echo "inputFile=\"$inputFile\"" >&2
-echo "verbose=\"$Verbose\"" >&2
-echo "DeleteIt=\"$DeleteIt\"" >&2
-echo >&2
-
-fi
+debug_vars outputFile inputFile Verbose DeleteIt
 
 #
 # outputFile and inputFile required
 #
 
-if [ -z "$inputFile" ] || [ -z "$outputFile" ]; then   
-
-	echo >&2
-	echo "Sorry, inputFile and outputFile are required" >&2
-	echo >&2
-
+if [[ -z $inputFile || -z $outputFile ]]; then   
+	msg "Sorry, inputFile and outputFile are required"
 	usage 
 	exit 1
-
 fi
 
 #
 # set the outputFile to the fullpathdir
-#
-
-
-outputDir=`getFullPathDir $outputFile`
-
-outputBaseFileName=`basename $outputFile`
-outputFile="${outputDir}/${outputBaseFileName}"
-
-if [ "$Verbose" ]; then
-
-echo >&2
-echo "DEBUG: outputDir=\"$outputDir\"" >&2
-echo "DEBUG: outputFile=\"$outputFile\"" >&2
-echo >&2
-
-fi
-
-#
 # set the inputFile to the fullpathdir
 #
 
-inputDir=`getFullPathDir $inputFile`
+outputFile="$(cd "${outputFile%/*}" && echo "$PWD")/${outputFile##*/}"
+inputFile="$( cd "${inputFile%/*}"  && echo "$PWD")/${inputFile##*/}"
 
-inputBaseFileName=`basename $inputFile`
-inputFile="${inputDir}/${inputBaseFileName}"
-
-if [ "$Verbose" ]; then
-
-echo >&2
-echo "DEBUG: inputDir=\"$inputDir\"" >&2
-echo "DEBUG: inputFile=\"$inputFile\"" >&2
-echo >&2
-
-fi
+debug_vars outputFile inputFile
 
 #
 # no input, dont exec
 #
 
-if [ ! -r "$inputFile" ]; then
-
-	echo >&2
-	echo "Sorry, failed to read $inputFile" >&2
-	echo >&2
-	exit 1
-
-fi
+[[ ! -r $inputFile ]] && \
+  exit_msg 1 "Sorry, failed to read $inputFile"
 
 #
 # Create the VideoTmpDir or die
 #
 
-VideoTmpDir="$TmpDir/`basename $inputFile`/"
+VideoTmpDir="$TmpDir/$(basename "$inputFile")/"
 
-if [ ! -d "$VideoTmpDir" ]; then
-
-	echo >&2
-	echo "Creating:  $VideoTmpDir" >&2
-	echo >&2
-
-	mkdir -p $VideoTmpDir
-
-	if [ $? != "0" ]; then
-
-		echo >&2
-		echo "Sorry, failed to create $VideoTmpDir" >&2
-		echo >&2
-		exit 1
-
-	fi
+if [[ ! -d $VideoTmpDir ]]; then
+	msg "Creating:  $VideoTmpDir"
+	mkdir -p "$VideoTmpDir" || \
+	  exit_msg 1 "Sorry, failed to create $VideoTmpDir"
 
 fi
 
-cd $VideoTmpDir
-
-if [ $? != "0" ]; then
-
-	echo >&2
-	echo "Sorry, cd $VideoTmpDir failed" >&2
-	echo >&2
-
-	exit 1
-
-fi
+cd "$VideoTmpDir" || \
+  exit_msg 1 "Sorry, cd $VideoTmpDir failed"
 
 #
 # Create the video index file or die
@@ -298,54 +165,32 @@ fi
 
 IndexFile="$VideoTmpDir/index"
 
-> $IndexFile > /dev/null
+> $IndexFile > /dev/null || \
+  exit_msg 1 "Sorry failed to create the IndexFile: $IndexFile"
 
-if [ $? != "0" ]; then
-
-	echo >&2
-	echo "Sorry failed to create the IndexFile: $IndexFile" >&2
-	echo >&2
-
-	exit 1
-
-fi
-
-echo >&2
-echo "Creating indexFile: $IndexFile: running  mkvmerge -I $inputFile > $IndexFile" >&2
+msg "Creating indexFile: $IndexFile: running  mkvmerge -I $inputFile > $IndexFile"
 echo $IndexFile >&2
 
-mkvmerge -I  $inputFile > $IndexFile
-
-if [ $? != "0" ]; then
-
-	echo >&2
-	echo "Sorry, mkvmerge -I $inputFile failed" >&2
-	echo >&2
-	exit 1
-
-fi
+mkvmerge -I "$inputFile" > "$IndexFile" || \
+  exit_msg 1 "Sorry, mkvmerge -I $inputFile failed"
 
 #
 # check if there are pgs subtitles
 #
 
-cat $IndexFile | grep "PGS" > /dev/null
-
-if [ $? != "0" ]; then
-
-	echo >&2
-	echo "No, PGS subtitles found" >&2
-	echo >&2
-	exit 1
-
-
-fi
+grep -q "PGS" -- "$IndexFile" || \
+  exit_msg 1 "No, PGS subtitles found"
 
 #
 # Get the videoTracks from the index
 #
 
-videoTracks=`cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" |  sed -e 's/.*ID \(.*:\) \(.*\) (\(.*\)).*language:\(...\) .*$/\1\2\.\4.\3/' | sed -e 's/^\(.*\.\).*\(...\)$/\1\2/' | tr "A-Z" "a-z" | sed -e 's/^\(.*\)\:\(.*\)\.\(.*\)$/\1\:\2\.\1_\3/' | tr "\n" " "`
+videoTracks=$( \
+  cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" | \
+  sed -e 's/.*ID \(.*:\) \(.*\) (\(.*\)).*language:\(...\) .*$/\1\2\.\4.\3/' | \
+  sed -e 's/^\(.*\.\).*\(...\)$/\1\2/' | tr "A-Z" "a-z" | \
+  sed -e 's/^\(.*\)\:\(.*\)\.\(.*\)$/\1\:\2\.\1_\3/' | tr "\n" " "
+)
 
 #
 # extractIt
@@ -353,170 +198,80 @@ videoTracks=`cat $IndexFile | sed "1d" | head -n -1 | grep "^Track" |  sed -e 's
 
 echo "Executing mkvextract tracks $inputFile $videoTracks" >&2
 
-if [ "$Verbose" ]; then
+debug_vars videoTracks langTracks
 
-	echo >&2
-	echo "DEBUG: videoTracks: \"$videoTracks\"" >&2
-	echo "DEBUG: langTracks: \"$langTracks\"" >&2
-	echo >&2
+mkvextract tracks "$inputFile" $videoTracks || \
+  exit_msg 1 "Sorry, mkvextract tracks $inputFile $videoTracks failed"
 
-fi
-
-mkvextract tracks $inputFile $videoTracks
-
-if [ $? != "0" ]; then
-
-	echo >&2
-	echo "Sorry, mkvextract tracks $inputFile $videoTracks failed" >&2
-	echo >&2
-	exit 1
-
-
-fi
-
-mergeTracks=""
-extraSubFiles=""
+declare mergeTracks extraSubFiles
 
 #
 # convert the pgs subtitles
 #
 
 for track in $videoTracks; do
-
-	echo >&2
-	echo "t: $track" >&2
-	echo >&2
-
-	trackFile=`echo $track | cut -f2 -d ':'`
-
-	echo $track | grep -E "pgs$"
-
-	if [ $? = "0" ]; then
-
-		outBasename=`echo $trackFile | cut -f 1 -d '.'`
+	msg "t: $track"
+	trackFile="$(echo $track | cut -f2 -d ':')"
+	if echo "$track" | grep -E "pgs$" ; then
+		outBasename="$(echo "$trackFile" | cut -f 1 -d '.')"
 		outSub="${outBasename}.sub"
 
-		java -jar $BDSup2SubJar  $trackFile -o $trackFile.sub
-
-		if [ $? != "0" ]; then
-
-			echo >&2
-			echo "Sorry, subtitle convertion failed" >&2
-			echo >&2
-
-			exit 1
-
-
-		fi
+		java -jar "$BDSup2SubJar" "$trackFile" -o "${trackFile}.sub" || \
+		  exit_msg 1 "Sorry, subtitle convertion failed"
 
 		extraSubFiles="${extraSubFiles} ${trackFile}.sub ${trackFile}.idx"
-
 		trackFile="${trackFile}.idx"
-
-
 	fi
-
 	mergeTracks="$mergeTracks $trackFile"
-
 done 
 
 #
 # set the lang for each track
 #
 
-langTracks=`echo $mergeTracks | tr " " "\n" | sed '/^$/d' | sed -e 's/^\(\([^.]*\)\.\([^.]*\)\..*\)$/--language 0:\3 \1/' | tr "\n" " "`
+langTracks="$( \
+  echo $mergeTracks | tr " " "\n" | \
+  sed '/^$/d' | \
+  sed -e 's/^\(\([^.]*\)\.\([^.]*\)\..*\)$/--language 0:\3 \1/' | \
+  tr "\n" " "
+)"
 
-if [ "$Verbose" ]; then
-
-	echo >&2
-	echo "DEBUG: langTracks=\"$langTracks\"" >&2
-	echo "DEBUG: mergeTracks=\"$mergeTracks\"" >&2
-	echo "DEBUG: videoTracks=\"$videoTracks\"" >&2
-	echo >&2
-
-fi
+debug_vars langTracks mergeTracks videoTracks
 
 #
 # merge them
 #
 
-mkvmerge -o ${outputFile} $langTracks
+mkvmerge -o "${outputFile}" $langTracks || \
+  exit_msg 1 "Sorry, mkvmerge failed \"mkvmerge -o ${outputFile}_lang $langTracks\""
 
-if [ $? != "0" ]; then
-
-	echo >&2
-	echo "Sorry, mkvmerge failed \"mkvmerge -o ${outputFile}_lang $langTracks\"" >&2
-	echo >&2
-
-	exit 1
-
-fi
-
-if [ "$Verbose" ]; then
-
-	echo >&2
-	echo "DEBUG \"mkvmerge -o ${outputFile}_lang $langTracks\" executed"
-	echo >&2
-
-fi
+((Verbose)) && \
+  msg "DEBUG \"mkvmerge -o ${outputFile}_lang $langTracks\" executed"
 
 #
 # delete the temporary files
 #
 
-if [ "$DeleteIt" ]; then
-
-	if [ "Verbose" ]; then
-
-
-		echo "DEBUG: videoTracks: \"$videoTracks\""
-		echo "DEBUG: extraSubFiles : \"$extraSubFiles\""
-		echo "DEBUG: indexFile: \"$indexFile\""
-
-
-	fi
-
-
+if ((DeleteIt)); then
+	debug_vars videoTracks extraSubFiles indexFile
 	echo "Removing video tracks:"
-
 	for file in $videoTracks; do
-
-		fileToDel=`echo $file | cut -f2- -d  ':'`
-
-		if [ -f "$fileToDel" ]; then
-
-		echo "deleting:  \"$fileToDel\""
-
-			rm "$fileToDel"
-
-			if [ $? != "0" ]; then
-
-				echo "Sorry failed to delete \"$fileToDel\""
-				exit 1
-
-			fi
-
-
+		fileToDel="$(echo $file | cut -f2- -d  ':')"
+		if [[ -f $fileToDel ]]; then
+			echo "deleting:  \"$fileToDel\""
+			rm ${Verbose+-v} -- "$fileToDel" || \
+			  exit_msg 1 "Sorry failed to delete \"$fileToDel\""
 		fi
-
 	done
 
 	echo "Removing extra subFiles"
-
 	for fileToDel in $extraSubFiles; do
-
-		if [ -f "$fileToDel" ]; then
-
+		if [[ -f $fileToDel ]]; then
 			echo "deleting:  \"$fileToDel\""
-
-			rm "$fileToDel"
-
+			rm ${Verbose+-v} -- "$fileToDel"
 		fi
-
 	done
 
 	echo "Removing indexFile"
-
-	rm $IndexFile
-
+	rm ${Verbose+-v} -- "$IndexFile"
 fi
